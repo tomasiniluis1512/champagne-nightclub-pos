@@ -602,11 +602,11 @@ function showCierreHoy(){
     <p><strong>Neto (Ventas - Fichas - Gastos): S/ ${neto.toFixed(2)}</strong></p>
     <h4>Fichas por chica</h4><ul>`;
     for(const [n,a] of Object.entries(byChica)) html += `<li>${n}: S/ ${a.toFixed(2)}</li>`;
-    html += '</ul><h4>Cierres anteriores</h4><ul>';
-    cierres.slice().reverse().slice(0,10).forEach(c => {
-        html += `<li>${c.fechaHora}: Neto S/ ${c.neto.toFixed(2)} (${c.boletas} boletas)</li>`;
+    html += '</ul><h4>Cierres anteriores (clic para ver detalle)</h4><ul>';
+    cierres.slice().reverse().slice(0,15).forEach((c, idx) => {
+        html += `<li style="cursor:pointer;color:#4af" onclick="verDetalleCierre(${cierres.length-1-idx})">${c.fechaHora}: Neto S/ ${c.neto.toFixed(2)} (${c.boletas} boletas)</li>`;
     });
-    html += '</ul>';
+    html += '</ul><div id="detalleCierre" style="margin-top:15px;padding:10px;background:#333;border-radius:6px"></div>';
     document.getElementById('cierreResult').innerHTML = html;
 }
 
@@ -625,6 +625,12 @@ function cerrarCaja(){
     });
     const neto = sales - fichas - totalGastos;
     const ahora = Date.now();
+    const ticketsDelPeriodo = tickets.filter(t => !t.cancelled && isAfterLastCierre(t.date));
+    const gastosDelPeriodo = gastos.filter(g => isAfterLastCierre(g.date));
+    const byChica = {};
+    ticketsDelPeriodo.forEach(t => {
+        (t.chicas||[]).forEach(ch => byChica[ch.name] = (byChica[ch.name]||0) + ch.fichaShare);
+    });
     const cierre = {
         id: ahora,
         fechaHora: new Date().toLocaleString('es-PE'),
@@ -632,7 +638,16 @@ function cerrarCaja(){
         ventas: sales,
         fichas: fichas,
         gastos: totalGastos,
-        neto: neto
+        neto: neto,
+        detalleTickets: ticketsDelPeriodo.map(t => ({
+            numero: t.numeroCompleto,
+            fecha: t.date,
+            cliente: t.clientName,
+            total: t.totalProducts,
+            ficha: t.totalFicha || 0
+        })),
+        detalleGastos: gastosDelPeriodo.map(g => ({desc: g.desc, monto: g.monto, date: g.date})),
+        fichasPorChica: byChica
     };
     cierres.push(cierre);
     lastCierreTime = ahora;
@@ -678,6 +693,31 @@ function deleteGasto(i){
         saveAll();
         renderGastos();
     }
+}
+
+function verDetalleCierre(index){
+    const c = cierres[index];
+    if(!c) return;
+    let html = `<h3>Detalle del Cierre: ${c.fechaHora}</h3>
+    <p><strong>Boletas:</strong> ${c.boletas}</p>
+    <p><strong>Ventas:</strong> S/ ${c.ventas.toFixed(2)}</p>
+    <p><strong>Fichas:</strong> S/ ${c.fichas.toFixed(2)}</p>
+    <p><strong>Gastos:</strong> S/ ${c.gastos.toFixed(2)}</p>
+    <p><strong>Neto:</strong> S/ ${c.neto.toFixed(2)}</p>
+    <h4>Fichas por chica</h4><ul>`;
+    for(const [n,a] of Object.entries(c.fichasPorChica || {})){
+        html += `<li>${n}: S/ ${a.toFixed(2)}</li>`;
+    }
+    html += '</ul><h4>Boletas del período</h4><table><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Ficha</th></tr>';
+    (c.detalleTickets||[]).forEach(t => {
+        html += `<tr><td>${t.numero}</td><td>${t.fecha}</td><td>${t.cliente}</td><td>S/ ${t.total.toFixed(2)}</td><td>S/ ${t.ficha.toFixed(2)}</td></tr>`;
+    });
+    html += '</table><h4>Gastos</h4><ul>';
+    (c.detalleGastos||[]).forEach(g => {
+        html += `<li>${g.date} - ${g.desc}: S/ ${g.monto.toFixed(2)}</li>`;
+    });
+    html += '</ul>';
+    document.getElementById('detalleCierre').innerHTML = html;
 }
 
 window.onload=()=>{
