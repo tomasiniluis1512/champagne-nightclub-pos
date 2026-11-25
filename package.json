@@ -1,0 +1,28 @@
+{
+  "name": "pos-champagne",
+  "version": "1.0.0",
+  "description": "POS Night Club Champagne - Inversiones JYL",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "author": "Inversiones JYL S.A.C.S",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.inversionesjyl.poschampagne",
+    "productName": "POS Champagne",
+    "win": {
+      "target": "nsis",
+      "icon": "icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
