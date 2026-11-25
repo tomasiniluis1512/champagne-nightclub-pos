@@ -1,43 +1,34 @@
-# Sistema POS - Night Club Champagne
+# POS Champagne - Aplicativo de Escritorio
 
 **Inversiones JYL S.A.C.S**
 
-Sistema web simple para control de boletas, notas de ventas, gestión de productos, chicas (fichas/comisiones) y contabilidad para el Night Club Champagne.
+## Cómo convertirlo en un programa (sin navegador)
 
-## Características
+### Requisitos
+1. Instala Node.js desde https://nodejs.org (versión LTS)
 
-- Gestión de productos (precio + ficha por unidad)
-- Registro de chicas
-- **Ficha automática por producto**: cada producto ya tiene su ficha definida
-- En cada boleta, **por cada producto** puedes asignar la ficha a:
-  - Una sola chica
-  - Varias chicas (se divide entre ellas)
-  - Ninguna (solo cliente, nadie se lleva ficha de ese producto)
-- Contabilidad completa siempre en el sistema (aunque no se imprima)
-- Impresión de boletas:
-  - Opción para incluir o **no** incluir nombres de chicas y fichas
-  - Soporte especial para papel de **58 mm**
-  - Ancho de papel configurable
-- Historial de boletas
-- Datos guardados en el navegador (localStorage)
+### Pasos
+1. Descarga este repositorio (ZIP) y extráelo.
+2. Abre una terminal (CMD o PowerShell) dentro de la carpeta.
+3. Ejecuta estos comandos:
 
-## Cómo usar
+```bash
+npm install
+npm start
+```
 
-1. Abre `index.html` en un navegador (Chrome o Edge recomendado).
-2. Configura productos (con su ficha) y chicas.
-3. En **Nueva Boleta**:
-   - Agrega productos y cantidad
-   - En cada producto marca las chicas que se llevan la ficha de ese producto (o no marques ninguna)
-   - El resumen se actualiza solo
-   - Crea la boleta
-4. Al imprimir elige si quieres que salgan las chicas o no.
+Se abrirá como un programa normal (ventana propia, sin navegador).
 
-## Ejemplo
+### Para crear el instalador .exe
+```bash
+npm run build
+```
+El instalador saldrá en la carpeta `dist/`.
 
-- Jarra de Cerveza (ficha S/20) → marcas 2 chicas → S/10 cada una
-- Agua (ficha S/0 o la que pongas) → no marcas ninguna chica → solo cliente
-
-Todo queda registrado en Contabilidad.
+## Notas
+- Todos los datos se guardan localmente (igual que antes).
+- No necesita internet para funcionar.
+- El archivo `index.html` es el mismo sistema que ya usabas.
 
 ---
 
