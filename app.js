@@ -327,7 +327,6 @@ function renderPrintPreview() {
         html += `<p>Total Fichas: S/ ${currentTicket.totalFicha.toFixed(2)}</p>`;
     }
     html += `<hr><p style="text-align:center;font-size:10px;">Gracias por su preferencia</p>
-        <p style="text-align:center;font-size:9px;">Exonerado de IGV - Amazonía</p>
         </div>`;
     document.getElementById('printPreview').innerHTML = html;
 }
