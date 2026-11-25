@@ -2,7 +2,15 @@
 let products = JSON.parse(localStorage.getItem('products') || '[]');
 let chicas = JSON.parse(localStorage.getItem('chicas') || '[]');
 let tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
-let config = JSON.parse(localStorage.getItem('config') || '{"companyName":"Inversiones JYL S.A.C.S","ruc":"20615614999","localName":"Night Club Champagne","paperWidth":58}');
+let config = JSON.parse(localStorage.getItem('config') || '{
+  "companyName":"Inversiones JYL S.A.C.S",
+  "ruc":"20615614999",
+  "address":"Jr. Yavari 1781",
+  "localName":"",
+  "serie":"B001",
+  "nextNumber":1,
+  "paperWidth":58
+}');
 
 function saveAll() {
     localStorage.setItem('products', JSON.stringify(products));
@@ -239,20 +247,30 @@ function createTicket() {
         fichaShare
     }));
 
+    // Generate correlative number
+    const numero = config.nextNumber || 1;
+    const serie = config.serie || 'B001';
+    const numeroCompleto = serie + '-' + String(numero).padStart(8, '0');
+
     const ticket = {
         id: Date.now(),
+        serie,
+        numero,
+        numeroCompleto,
         date: new Date().toLocaleString('es-PE'),
         clientName,
         items,
         chicas: chicasSummary,
         totalProducts,
         totalFicha,
+        igv: 0,
         grandTotal: totalProducts + totalFicha
     };
 
     tickets.push(ticket);
+    config.nextNumber = numero + 1;
     saveAll();
-    alert('Boleta creada! ID: ' + ticket.id);
+    alert('Boleta creada! ' + numeroCompleto);
     showPrintModal(ticket);
 
     document.getElementById('clientName').value = '';
@@ -273,30 +291,44 @@ function renderPrintPreview() {
     const w = config.paperWidth || 58;
     document.documentElement.style.setProperty('--paper-width', w + 'mm');
 
+    const company = config.companyName || 'Inversiones JYL S.A.C.S';
+    const ruc = config.ruc || '20615614999';
+    const address = config.address || 'Jr. Yavari 1781';
+    const local = config.localName && config.localName.trim() ? config.localName.trim() : '';
+
     let html = `<div class="print-area">
-        <h3 style="text-align:center;margin:0">${config.companyName}</h3>
-        <p style="text-align:center;margin:0">RUC: ${config.ruc || '20615614999'}</p>
-        <p style="text-align:center;margin:0">${config.localName}</p>
-        <p style="text-align:center;font-size:10px">Boleta de Venta</p>
+        <p style="text-align:center;margin:0;font-weight:bold;">${company}</p>
+        <p style="text-align:center;margin:0;">RUC: ${ruc}</p>
+        <p style="text-align:center;margin:0;font-size:11px;">${address}</p>`;
+    if (local) {
+        html += `<p style="text-align:center;margin:0;">${local}</p>`;
+    }
+    html += `<p style="text-align:center;margin:4px 0;font-weight:bold;">BOLETA DE VENTA</p>
+        <p style="text-align:center;margin:0;">${currentTicket.numeroCompleto || 'B001-00000001'}</p>
         <p>Fecha: ${currentTicket.date}</p>
         <p>Cliente: ${currentTicket.clientName}</p>
         <hr>
-        <table style="width:100%">
-            <tr><th>Prod</th><th>Cant</th><th>P.U.</th><th>Sub</th></tr>`;
+        <table style="width:100%;font-size:11px;">
+            <tr><th>Cant</th><th>Descripción</th><th>P.U.</th><th>Importe</th></tr>`;
     currentTicket.items.forEach(it => {
-        html += `<tr><td>${it.name}</td><td>${it.qty}</td><td>${it.price.toFixed(2)}</td><td>${it.subtotal.toFixed(2)}</td></tr>`;
+        html += `<tr><td>${it.qty}</td><td>${it.name}</td><td>${it.price.toFixed(2)}</td><td>${it.subtotal.toFixed(2)}</td></tr>`;
     });
     html += `</table>
-        <p><strong>Total Productos: S/ ${currentTicket.totalProducts.toFixed(2)}</strong></p>`;
+        <hr>
+        <p>OP. EXONERADAS: S/ ${currentTicket.totalProducts.toFixed(2)}</p>
+        <p>IGV: S/ 0.00</p>
+        <p><strong>IMPORTE TOTAL: S/ ${currentTicket.totalProducts.toFixed(2)}</strong></p>`;
 
-    if (include && currentTicket.chicas.length) {
-        html += `<hr><p><strong>Chicas / Fichas:</strong></p>`;
+    if (include && currentTicket.chicas && currentTicket.chicas.length) {
+        html += `<hr><p><strong>Chicas / Fichas (control interno):</strong></p>`;
         currentTicket.chicas.forEach(ch => {
             html += `<p>${ch.name}: S/ ${ch.fichaShare.toFixed(2)}</p>`;
         });
         html += `<p>Total Fichas: S/ ${currentTicket.totalFicha.toFixed(2)}</p>`;
     }
-    html += `<hr><p style="text-align:center">Gracias por su preferencia</p></div>`;
+    html += `<hr><p style="text-align:center;font-size:10px;">Gracias por su preferencia</p>
+        <p style="text-align:center;font-size:9px;">Exonerado de IGV - Amazonía</p>
+        </div>`;
     document.getElementById('printPreview').innerHTML = html;
 }
 
@@ -318,10 +350,11 @@ function closeModal() {
 function renderHistorial() {
     const div = document.getElementById('ticketsList');
     if (!tickets.length) { div.innerHTML = '<p>No hay boletas.</p>'; return; }
-    let html = '<table><tr><th>Fecha</th><th>Cliente</th><th>Total Prod</th><th>Ficha</th><th>Chicas</th><th>Acciones</th></tr>';
+    let html = '<table><tr><th>Número</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Ficha</th><th>Chicas</th><th>Acciones</th></tr>';
     tickets.slice().reverse().forEach(t => {
         const chNames = t.chicas.map(c => c.name).join(', ') || '-';
         html += `<tr>
+            <td>${t.numeroCompleto || t.id}</td>
             <td>${t.date}</td>
             <td>${t.clientName}</td>
             <td>S/ ${t.totalProducts.toFixed(2)}</td>
@@ -352,9 +385,9 @@ function renderAccounting() {
         });
     });
     let html = `<h3>Resumen</h3>
-        <p>Total Ventas Productos: S/ ${totalSales.toFixed(2)}</p>
+        <p>Total Ventas Productos (exonerado): S/ ${totalSales.toFixed(2)}</p>
         <p>Total Fichas asignadas a chicas: S/ ${totalFichas.toFixed(2)}</p>
-        <p>Gran Total (productos + fichas): S/ ${(totalSales + totalFichas).toFixed(2)}</p>
+        <p>Gran Total: S/ ${(totalSales + totalFichas).toFixed(2)}</p>
         <h3>Fichas por Chica</h3>`;
     if (Object.keys(byChica).length === 0) {
         html += '<p>Aún no hay fichas registradas.</p>';
@@ -387,21 +420,21 @@ function downloadCSV(filename, rows) {
 function exportHistorialExcel() {
     if (!tickets.length) { alert('No hay boletas para exportar'); return; }
     const rows = [
-        ['ID', 'Fecha', 'Cliente', 'Total Productos', 'Total Ficha', 'Gran Total', 'Chicas']
+        ['Número', 'Fecha', 'Cliente', 'Total Productos', 'Total Ficha', 'Gran Total', 'Chicas']
     ];
     tickets.forEach(t => {
         const chNames = t.chicas.map(c => `${c.name} (S/${c.fichaShare.toFixed(2)})`).join(' | ') || '-';
         rows.push([
-            t.id,
+            t.numeroCompleto || t.id,
             t.date,
             t.clientName,
             t.totalProducts.toFixed(2),
             t.totalFicha.toFixed(2),
-            t.grandTotal.toFixed(2),
+            (t.totalProducts + t.totalFicha).toFixed(2),
             chNames
         ]);
     });
-    downloadCSV('historial_boletas_champagne.csv', rows);
+    downloadCSV('historial_boletas.csv', rows);
 }
 
 function exportContabilidadExcel() {
@@ -417,7 +450,7 @@ function exportContabilidadExcel() {
 
     const rows = [
         ['Concepto', 'Monto'],
-        ['Total Ventas Productos', totalSales.toFixed(2)],
+        ['Total Ventas Productos (Exonerado)', totalSales.toFixed(2)],
         ['Total Fichas', totalFichas.toFixed(2)],
         ['Gran Total', (totalSales + totalFichas).toFixed(2)],
         [''],
@@ -426,21 +459,27 @@ function exportContabilidadExcel() {
     for (const [name, amt] of Object.entries(byChica)) {
         rows.push([name, amt.toFixed(2)]);
     }
-    downloadCSV('contabilidad_champagne.csv', rows);
+    downloadCSV('contabilidad.csv', rows);
 }
 
 // Config
 function loadConfig() {
     document.getElementById('companyName').value = config.companyName || 'Inversiones JYL S.A.C.S';
     document.getElementById('ruc').value = config.ruc || '20615614999';
-    document.getElementById('localName').value = config.localName || 'Night Club Champagne';
+    document.getElementById('address').value = config.address || 'Jr. Yavari 1781';
+    document.getElementById('localName').value = config.localName || '';
+    document.getElementById('serie').value = config.serie || 'B001';
+    document.getElementById('nextNumber').value = config.nextNumber || 1;
     document.getElementById('paperWidth').value = config.paperWidth || 58;
 }
 
 function saveConfig() {
     config.companyName = document.getElementById('companyName').value;
     config.ruc = document.getElementById('ruc').value;
+    config.address = document.getElementById('address').value;
     config.localName = document.getElementById('localName').value;
+    config.serie = document.getElementById('serie').value || 'B001';
+    config.nextNumber = parseInt(document.getElementById('nextNumber').value) || 1;
     config.paperWidth = parseInt(document.getElementById('paperWidth').value) || 58;
     saveAll();
     alert('Configuración guardada');
@@ -448,8 +487,11 @@ function saveConfig() {
 
 // Init
 window.onload = () => {
-    // Ensure RUC exists in old configs
     if (!config.ruc) config.ruc = '20615614999';
+    if (!config.address) config.address = 'Jr. Yavari 1781';
+    if (config.localName === undefined) config.localName = '';
+    if (!config.serie) config.serie = 'B001';
+    if (!config.nextNumber) config.nextNumber = 1;
     showSection('nueva');
     if (!products.length) {
         products = [
