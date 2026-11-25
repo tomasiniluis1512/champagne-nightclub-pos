@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>POS Champagne - Inversiones JYL S.A.C.S</title>
+    <title>POS - Inversiones JYL S.A.C.S</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
-        <h1>Night Club Champagne</h1>
-        <p>Inversiones JYL S.A.C.S | Sistema de Boletas y Ventas</p>
+        <h1>Inversiones JYL S.A.C.S</h1>
+        <p>Sistema de Boletas y Ventas</p>
     </header>
 
     <nav>
@@ -25,7 +25,7 @@
         <!-- Nueva Boleta -->
         <section id="nueva" class="active">
             <h2>Nueva Boleta</h2>
-            <label>Nombre del Cliente: <input type="text" id="clientName" placeholder="Opcional"></label>
+            <label>Nombre del Cliente: <input type="text" id="clientName" placeholder="Opcional (obligatorio si > S/700)"></label>
             <h3>Productos</h3>
             <p style="font-size:14px;color:#aaa;">Por cada producto marca las chicas que se llevan la ficha de ese producto.<br>Si no marcas ninguna, la ficha es solo del cliente (nadie se la lleva).</p>
             <div id="productList"></div>
@@ -75,7 +75,10 @@
             <h2>Configuración</h2>
             <label>Nombre Empresa: <input type="text" id="companyName" value="Inversiones JYL S.A.C.S"></label>
             <label>RUC: <input type="text" id="ruc" value="20615614999"></label>
-            <label>Nombre Local: <input type="text" id="localName" value="Night Club Champagne"></label>
+            <label>Dirección: <input type="text" id="address" value="Jr. Yavari 1781"></label>
+            <label>Nombre Comercial / Local (opcional): <input type="text" id="localName" placeholder="Dejar vacío si no quieres que salga" value=""></label>
+            <label>Serie de Boleta: <input type="text" id="serie" value="B001"></label>
+            <label>Siguiente Número: <input type="number" id="nextNumber" value="1" min="1"></label>
             <label>Ancho papel impresión (mm): <input type="number" id="paperWidth" value="58" min="40" max="80"></label>
             <button onclick="saveConfig()">Guardar Config</button>
         </section>
