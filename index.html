@@ -86,8 +86,8 @@ th,td{border:1px solid #444;padding:8px}
 </section>
 <section id="cierre">
 <h2>Cierre de Caja del Día</h2>
-<button onclick="showCierreHoy()" style="background:#1a7f37">Ver Cierre de Hoy</button>
-<button onclick="cerrarCaja()" style="background:#c00; margin-left:10px;">Guardar Cierre de Caja</button>
+<button onclick="showCierreHoy()" style="background:#1a7f37">Ver Período Actual</button>
+<button onclick="cerrarCaja()" style="background:#c00; margin-left:10px;">Guardar Cierre y Empezar Nuevo Período</button>
 <div id="cierreResult" style="margin-top:20px;"></div>
 </section>
 <section id="gastos">
@@ -134,6 +134,7 @@ let currentMesaId = null;
 let pagosChicas = JSON.parse(localStorage.getItem('pagosChicas') || '{}');
 let gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
 let cierres = JSON.parse(localStorage.getItem('cierres') || '[]');
+let lastCierreTime = parseInt(localStorage.getItem('lastCierreTime') || '0');
 
 function saveAll(){
     localStorage.setItem('products', JSON.stringify(products));
@@ -144,6 +145,7 @@ function saveAll(){
     localStorage.setItem('pagosChicas', JSON.stringify(pagosChicas));
     localStorage.setItem('gastos', JSON.stringify(gastos));
     localStorage.setItem('cierres', JSON.stringify(cierres));
+    localStorage.setItem('lastCierreTime', lastCierreTime);
 }
 
 function showSection(id){
@@ -160,6 +162,14 @@ function showSection(id){
     if(id==='gastos') renderGastos();
     if(id==='config') loadConfig();
     if(id==='nueva') renderProductSelects();
+}
+
+function isAfterLastCierre(dateStr){
+    if(!lastCierreTime) return true;
+    try{
+        const d = new Date(dateStr);
+        return d.getTime() > lastCierreTime;
+    }catch(e){ return true; }
 }
 
 function openNewMesa(){
@@ -572,20 +582,19 @@ function pagarChica(name, total){
 function showCierreHoy(){
     let sales=0, fichas=0, count=0, totalGastos=0;
     const byChica={};
-    const today = new Date().toLocaleDateString('es-PE');
     tickets.forEach(t => {
         if(t.cancelled) return;
-        if(!(t.date||'').includes(today)) return;
+        if(!isAfterLastCierre(t.date)) return;
         sales += t.totalProducts || 0;
         fichas += t.totalFicha || 0;
         count++;
         (t.chicas||[]).forEach(ch => byChica[ch.name]=(byChica[ch.name]||0)+ch.fichaShare);
     });
     gastos.forEach(g => {
-        if((g.date||'').includes(today)) totalGastos += g.monto || 0;
+        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
     });
     const neto = sales - fichas - totalGastos;
-    let html = `<h3>Resumen del día</h3>
+    let html = `<h3>Resumen del período actual</h3>
     <p>Boletas: ${count}</p>
     <p>Total Ventas: S/ ${sales.toFixed(2)}</p>
     <p>Total Fichas: S/ ${fichas.toFixed(2)}</p>
@@ -602,22 +611,22 @@ function showCierreHoy(){
 }
 
 function cerrarCaja(){
-    if(!confirm('¿Guardar cierre de caja de hoy?')) return;
+    if(!confirm('¿Guardar cierre de caja y empezar período nuevo? Las ventas siguientes no se mezclarán con estas.')) return;
     let sales=0, fichas=0, count=0, totalGastos=0;
-    const today = new Date().toLocaleDateString('es-PE');
     tickets.forEach(t => {
         if(t.cancelled) return;
-        if(!(t.date||'').includes(today)) return;
+        if(!isAfterLastCierre(t.date)) return;
         sales += t.totalProducts || 0;
         fichas += t.totalFicha || 0;
         count++;
     });
     gastos.forEach(g => {
-        if((g.date||'').includes(today)) totalGastos += g.monto || 0;
+        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
     });
     const neto = sales - fichas - totalGastos;
+    const ahora = Date.now();
     const cierre = {
-        id: Date.now(),
+        id: ahora,
         fechaHora: new Date().toLocaleString('es-PE'),
         boletas: count,
         ventas: sales,
@@ -626,9 +635,10 @@ function cerrarCaja(){
         neto: neto
     };
     cierres.push(cierre);
+    lastCierreTime = ahora;
     saveAll();
     showCierreHoy();
-    alert('Cierre de caja guardado.');
+    alert('Cierre de caja guardado. Empieza un nuevo período.');
 }
 
 function addGasto(e){
