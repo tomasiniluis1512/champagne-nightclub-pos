@@ -35,6 +35,7 @@ th,td{border:1px solid #444;padding:8px}
 <button onclick="showSection('chicas')">Chicas</button>
 <button onclick="showSection('historial')">Historial</button>
 <button onclick="showSection('contabilidad')">Contabilidad</button>
+<button onclick="showSection('cierre')">Cierre de Caja</button>
 <button onclick="showSection('config')">Configuración</button>
 </nav>
 <main>
@@ -80,6 +81,12 @@ th,td{border:1px solid #444;padding:8px}
 <h2>Contabilidad</h2>
 <button onclick="exportContabilidadExcel()" style="background:#1a7f37">Exportar a Excel</button>
 <div id="accounting"></div>
+</section>
+<section id="cierre">
+<h2>Cierre de Caja del Día</h2>
+<button onclick="showCierreHoy()" style="background:#1a7f37">Ver Cierre de Hoy</button>
+<button onclick="cerrarCaja()" style="background:#c00; margin-left:10px;">Cerrar Caja del Día</button>
+<div id="cierreResult" style="margin-top:20px;"></div>
 </section>
 <section id="config">
 <h2>Configuración</h2>
@@ -127,6 +134,7 @@ function showSection(id){
     if(id==='chicas') renderChicas();
     if(id==='historial') renderHistorial();
     if(id==='contabilidad') renderAccounting();
+    if(id==='cierre') showCierreHoy();
     if(id==='config') loadConfig();
     if(id==='nueva') renderProductSelects();
 }
@@ -460,6 +468,34 @@ function saveConfig(){
     config.paperWidth=parseInt(document.getElementById('paperWidth').value)||58;
     saveAll();
     alert('Guardado');
+}
+
+function showCierreHoy(){
+    let sales=0, fichas=0, count=0;
+    const byChica={};
+    const today = new Date().toLocaleDateString('es-PE');
+    tickets.forEach(t => {
+        if(!(t.date||'').includes(today)) return;
+        sales += t.totalProducts || 0;
+        fichas += t.totalFicha || 0;
+        count++;
+        (t.chicas||[]).forEach(ch => byChica[ch.name]=(byChica[ch.name]||0)+ch.fichaShare);
+    });
+    let html = `<h3>Resumen del día</h3>
+    <p>Boletas: ${count}</p>
+    <p>Total Ventas: S/ ${sales.toFixed(2)}</p>
+    <p>Total Fichas: S/ ${fichas.toFixed(2)}</p>
+    <p>Gran Total: S/ ${(sales+fichas).toFixed(2)}</p>
+    <h4>Fichas por chica</h4><ul>`;
+    for(const [n,a] of Object.entries(byChica)) html += `<li>${n}: S/ ${a.toFixed(2)}</li>`;
+    html += '</ul>';
+    document.getElementById('cierreResult').innerHTML = html;
+}
+
+function cerrarCaja(){
+    if(!confirm('¿Cerrar caja del día? Esto solo genera el resumen (no borra datos).')) return;
+    showCierreHoy();
+    alert('Cierre de caja generado. Puedes exportar desde Contabilidad o Historial.');
 }
 
 window.onload=()=>{
