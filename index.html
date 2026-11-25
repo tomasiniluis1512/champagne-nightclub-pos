@@ -36,6 +36,7 @@ th,td{border:1px solid #444;padding:8px}
 <button onclick="showSection('historial')">Historial</button>
 <button onclick="showSection('contabilidad')">Contabilidad</button>
 <button onclick="showSection('cierre')">Cierre de Caja</button>
+<button onclick="showSection('pagos')">Pagos Chicas</button>
 <button onclick="showSection('config')">Configuración</button>
 </nav>
 <main>
@@ -88,6 +89,10 @@ th,td{border:1px solid #444;padding:8px}
 <button onclick="cerrarCaja()" style="background:#c00; margin-left:10px;">Cerrar Caja del Día</button>
 <div id="cierreResult" style="margin-top:20px;"></div>
 </section>
+<section id="pagos">
+<h2>Pagos a Chicas</h2>
+<div id="pagosList"></div>
+</section>
 <section id="config">
 <h2>Configuración</h2>
 <label>Nombre Empresa: <input type="text" id="companyName" value="Inversiones JYL S.A.C.S"></label>
@@ -116,6 +121,7 @@ let tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
 let mesas = JSON.parse(localStorage.getItem('mesas') || '[]');
 let config = JSON.parse(localStorage.getItem('config') || '{"companyName":"Inversiones JYL S.A.C.S","ruc":"20615614999","address":"Jr. Yavari 1781","localName":"","serie":"B001","nextNumber":1,"paperWidth":58}');
 let currentMesaId = null;
+let pagosChicas = JSON.parse(localStorage.getItem('pagosChicas') || '{}');
 
 function saveAll(){
     localStorage.setItem('products', JSON.stringify(products));
@@ -123,6 +129,7 @@ function saveAll(){
     localStorage.setItem('tickets', JSON.stringify(tickets));
     localStorage.setItem('mesas', JSON.stringify(mesas));
     localStorage.setItem('config', JSON.stringify(config));
+    localStorage.setItem('pagosChicas', JSON.stringify(pagosChicas));
 }
 
 function showSection(id){
@@ -135,6 +142,7 @@ function showSection(id){
     if(id==='historial') renderHistorial();
     if(id==='contabilidad') renderAccounting();
     if(id==='cierre') showCierreHoy();
+    if(id==='pagos') renderPagos();
     if(id==='config') loadConfig();
     if(id==='nueva') renderProductSelects();
 }
@@ -415,7 +423,7 @@ function renderAccounting(){
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
-    let html=`<p>Total Ventas: S/ ${sales.toFixed(2)}</p><p>Total Fichas: S/ ${fichas.toFixed(2)}</p><h3>Por chica</h3><ul>`;
+    let html=`<p>Total Ventas: S/ ${sales.toFixed(2)}</p><p>Total Fichas: S/ ${fichas.toFixed(2)}</p><p>Neto (Ventas - Fichas): S/ ${(sales - fichas).toFixed(2)}</p><h3>Por chica</h3><ul>`;
     for(const [n,a] of Object.entries(by)) html+=`<li>${n}: S/ ${a.toFixed(2)}</li>`;
     div.innerHTML=html+'</ul>';
 }
@@ -443,7 +451,7 @@ function exportContabilidadExcel(){
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
-    const rows=[['Concepto','Monto'],['Ventas',sales.toFixed(2)],['Fichas',fichas.toFixed(2)],[''],['Chica','Ficha']];
+    const rows=[['Concepto','Monto'],['Ventas',sales.toFixed(2)],['Fichas',fichas.toFixed(2)],['Neto',(sales-fichas).toFixed(2)],[''],['Chica','Ficha']];
     for(const [n,a] of Object.entries(by)) rows.push([n, a.toFixed(2)]);
     downloadCSV('contabilidad.csv', rows);
 }
@@ -470,6 +478,43 @@ function saveConfig(){
     alert('Guardado');
 }
 
+function renderPagos(){
+    const div = document.getElementById('pagosList');
+    const by = {};
+    tickets.forEach(t => {
+        (t.chicas||[]).forEach(ch => {
+            by[ch.name] = (by[ch.name] || 0) + ch.fichaShare;
+        });
+    });
+    if(!Object.keys(by).length){ div.innerHTML='<p>No hay fichas pendientes.</p>'; return; }
+    let html = '<table><tr><th>Chica</th><th>Total Ficha</th><th>Pagado</th><th>Pendiente</th><th>Estado</th><th>Acción</th></tr>';
+    for(const [name, total] of Object.entries(by)){
+        const pagado = pagosChicas[name] || 0;
+        const pendiente = total - pagado;
+        const estado = pendiente <= 0 ? 'Cancelado' : 'Pendiente';
+        html += `<tr>
+            <td>${name}</td>
+            <td>S/ ${total.toFixed(2)}</td>
+            <td>S/ ${pagado.toFixed(2)}</td>
+            <td>S/ ${pendiente.toFixed(2)}</td>
+            <td>${estado}</td>
+            <td><button onclick="pagarChica('${name}', ${total.toFixed(2)})">Registrar Pago</button></td>
+        </tr>`;
+    }
+    div.innerHTML = html + '</table>';
+}
+
+function pagarChica(name, total){
+    const actual = pagosChicas[name] || 0;
+    const monto = prompt('¿Cuánto le pagas a ' + name + '? (Pendiente: S/ ' + (total - actual).toFixed(2) + ')', (total - actual).toFixed(2));
+    if(monto === null) return;
+    const valor = parseFloat(monto) || 0;
+    pagosChicas[name] = actual + valor;
+    saveAll();
+    renderPagos();
+    alert('Pago registrado.');
+}
+
 function showCierreHoy(){
     let sales=0, fichas=0, count=0;
     const byChica={};
@@ -485,7 +530,7 @@ function showCierreHoy(){
     <p>Boletas: ${count}</p>
     <p>Total Ventas: S/ ${sales.toFixed(2)}</p>
     <p>Total Fichas: S/ ${fichas.toFixed(2)}</p>
-    <p>Gran Total: S/ ${(sales+fichas).toFixed(2)}</p>
+    <p>Neto (Ventas - Fichas): S/ ${(sales - fichas).toFixed(2)}</p>
     <h4>Fichas por chica</h4><ul>`;
     for(const [n,a] of Object.entries(byChica)) html += `<li>${n}: S/ ${a.toFixed(2)}</li>`;
     html += '</ul>';
