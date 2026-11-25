@@ -37,7 +37,7 @@ function addProduct(e) {
 function renderProducts() {
     const div = document.getElementById('productsTable');
     if (!products.length) { div.innerHTML = '<p>No hay productos.</p>'; return; }
-    let html = '<table><tr><th>Nombre</th><th>Precio</th><th>Ficha Def.</th><th>Acciones</th></tr>';
+    let html = '<table><tr><th>Nombre</th><th>Precio</th><th>Ficha / unidad</th><th>Acciones</th></tr>';
     products.forEach((p, i) => {
         html += `<tr>
             <td>${p.name}</td>
@@ -54,7 +54,7 @@ function editProduct(i) {
     const p = products[i];
     const name = prompt('Nombre:', p.name);
     const price = prompt('Precio:', p.price);
-    const ficha = prompt('Ficha default:', p.ficha);
+    const ficha = prompt('Ficha por unidad:', p.ficha);
     if (name && price) {
         products[i] = { ...p, name, price: parseFloat(price), ficha: parseFloat(ficha) || 0 };
         saveAll();
@@ -99,113 +99,165 @@ function deleteChica(i) {
     }
 }
 
-// Nueva Boleta
-let productRows = [];
-let chicaRows = [];
-
+// Nueva Boleta - product rows with chica checkboxes
 function renderProductSelects() {
-    // Initial one row
     document.getElementById('productList').innerHTML = '';
-    productRows = [];
     addProductRow();
-    document.getElementById('chicaList').innerHTML = '';
-    chicaRows = [];
-    updateFichaDivision();
+    updateFichaSummary();
 }
 
 function addProductRow() {
-    const id = Date.now() + Math.random();
-    productRows.push(id);
     const div = document.getElementById('productList');
     const row = document.createElement('div');
-    row.className = 'row';
-    row.id = 'prod-' + id;
-    let options = '<option value="">Seleccionar...</option>';
-    products.forEach(p => options += `<option value="${p.id}" data-price="${p.price}" data-ficha="${p.ficha}">${p.name} - S/${p.price}</option>`);
+    row.className = 'product-row';
+    row.style.cssText = 'background:#2a2a2a; padding:12px; margin:8px 0; border-radius:6px;';
+
+    let prodOptions = '<option value="">Seleccionar producto...</option>';
+    products.forEach(p => {
+        prodOptions += `<option value="${p.id}" data-price="${p.price}" data-ficha="${p.ficha}">${p.name} - S/${p.price} (ficha S/${p.ficha})</option>`;
+    });
+
+    let chicaCheckboxes = '';
+    if (chicas.length === 0) {
+        chicaCheckboxes = '<em style="color:#888">No hay chicas registradas. Ve a la pestaña Chicas.</em>';
+    } else {
+        chicas.forEach(c => {
+            chicaCheckboxes += `<label style="margin-right:12px; font-size:14px;"><input type="checkbox" value="${c.id}" data-name="${c.name}" onchange="updateFichaSummary()"> ${c.name}</label>`;
+        });
+    }
+
     row.innerHTML = `
-        <select onchange="updateTotals()">${options}</select>
-        <input type="number" value="1" min="1" onchange="updateTotals()" style="width:60px">
-        <button onclick="this.parentElement.remove(); updateTotals()">X</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+            <select style="flex:2; min-width:180px;" onchange="updateFichaSummary()">${prodOptions}</select>
+            <input type="number" value="1" min="1" style="width:70px;" onchange="updateFichaSummary()" title="Cantidad">
+            <button type="button" onclick="this.closest('.product-row').remove(); updateFichaSummary()">X</button>
+        </div>
+        <div style="font-size:13px;">
+            <strong>Ficha de este producto para:</strong> (marca una o varias, o ninguna = solo cliente)<br>
+            ${chicaCheckboxes}
+        </div>
     `;
     div.appendChild(row);
+    updateFichaSummary();
 }
 
-function addChicaRow() {
-    const id = Date.now() + Math.random();
-    chicaRows.push(id);
-    const div = document.getElementById('chicaList');
-    const row = document.createElement('div');
-    row.className = 'row';
-    let options = '<option value="">Seleccionar chica...</option>';
-    chicas.forEach(c => options += `<option value="${c.id}">${c.name}</option>`);
-    row.innerHTML = `
-        <select onchange="updateFichaDivision()">${options}</select>
-        <button onclick="this.parentElement.remove(); updateFichaDivision()">X</button>
-    `;
-    div.appendChild(row);
-    updateFichaDivision();
-}
+function updateFichaSummary() {
+    const summary = document.getElementById('fichaSummary');
+    let totalProducts = 0;
+    let totalFichaAssigned = 0;
+    const byChica = {};
 
-function updateFichaDivision() {
-    const total = parseFloat(document.getElementById('fichaTotal').value) || 0;
-    const selects = document.querySelectorAll('#chicaList select');
-    const count = Array.from(selects).filter(s => s.value).length;
-    const share = count > 0 ? (total / count).toFixed(2) : 0;
-    document.getElementById('fichaDivision').textContent = count > 0 
-        ? `Ficha dividida entre ${count} chica(s): S/ ${share} cada una` 
-        : 'Agrega chicas para dividir la ficha';
-}
+    document.querySelectorAll('#productList .product-row').forEach(row => {
+        const select = row.querySelector('select');
+        const qtyInput = row.querySelector('input[type="number"]');
+        if (!select || !select.value) return;
 
-function updateTotals() {
-    // Could auto-sum ficha from products if wanted
-    updateFichaDivision();
+        const prod = products.find(p => p.id == select.value);
+        if (!prod) return;
+
+        const qty = parseInt(qtyInput.value) || 1;
+        const sub = prod.price * qty;
+        totalProducts += sub;
+
+        const fichaItem = prod.ficha * qty;
+        const checked = Array.from(row.querySelectorAll('input[type="checkbox"]:checked'));
+        if (checked.length > 0) {
+            const share = fichaItem / checked.length;
+            totalFichaAssigned += fichaItem;
+            checked.forEach(cb => {
+                const name = cb.dataset.name;
+                byChica[name] = (byChica[name] || 0) + share;
+            });
+        }
+    });
+
+    let html = `<strong>Resumen de esta boleta:</strong><br>
+        Total productos: S/ ${totalProducts.toFixed(2)}<br>
+        Total fichas asignadas a chicas: S/ ${totalFichaAssigned.toFixed(2)}`;
+    if (Object.keys(byChica).length) {
+        html += '<br><small>';
+        for (const [name, amt] of Object.entries(byChica)) {
+            html += `${name}: S/ ${amt.toFixed(2)} &nbsp; `;
+        }
+        html += '</small>';
+    }
+    summary.innerHTML = html;
 }
 
 function createTicket() {
     const clientName = document.getElementById('clientName').value.trim() || 'Cliente';
     const items = [];
     let totalProducts = 0;
-    document.querySelectorAll('#productList .row').forEach(row => {
-        const select = row.querySelector('select');
-        const qty = parseInt(row.querySelector('input').value) || 1;
-        if (select.value) {
-            const prod = products.find(p => p.id == select.value);
-            if (prod) {
-                const sub = prod.price * qty;
-                items.push({ productId: prod.id, name: prod.name, qty, price: prod.price, subtotal: sub });
-                totalProducts += sub;
-            }
-        }
-    });
-    if (!items.length) { alert('Agrega al menos un producto'); return; }
+    let totalFicha = 0;
+    const chicaTotals = {}; // name -> amount
 
-    const fichaTotal = parseFloat(document.getElementById('fichaTotal').value) || 0;
-    const selectedChicas = [];
-    const selects = document.querySelectorAll('#chicaList select');
-    const validChicas = Array.from(selects).filter(s => s.value);
-    const share = validChicas.length > 0 ? fichaTotal / validChicas.length : 0;
-    validChicas.forEach(s => {
-        const ch = chicas.find(c => c.id == s.value);
-        if (ch) selectedChicas.push({ id: ch.id, name: ch.name, fichaShare: share });
+    const rows = document.querySelectorAll('#productList .product-row');
+    if (rows.length === 0) { alert('Agrega al menos un producto'); return; }
+
+    rows.forEach(row => {
+        const select = row.querySelector('select');
+        const qtyInput = row.querySelector('input[type="number"]');
+        if (!select || !select.value) return;
+
+        const prod = products.find(p => p.id == select.value);
+        if (!prod) return;
+
+        const qty = parseInt(qtyInput.value) || 1;
+        const sub = prod.price * qty;
+        const fichaItem = prod.ficha * qty;
+
+        const assigned = [];
+        const checked = Array.from(row.querySelectorAll('input[type="checkbox"]:checked'));
+        if (checked.length > 0) {
+            const share = fichaItem / checked.length;
+            totalFicha += fichaItem;
+            checked.forEach(cb => {
+                const name = cb.dataset.name;
+                const id = cb.value;
+                assigned.push({ id, name, share });
+                chicaTotals[name] = (chicaTotals[name] || 0) + share;
+            });
+        }
+
+        items.push({
+            productId: prod.id,
+            name: prod.name,
+            qty,
+            price: prod.price,
+            subtotal: sub,
+            fichaPerUnit: prod.ficha,
+            fichaTotal: fichaItem,
+            assignedChicas: assigned   // empty array = solo cliente
+        });
+        totalProducts += sub;
     });
+
+    if (items.length === 0) { alert('Agrega al menos un producto válido'); return; }
+
+    // Build chicas summary array
+    const chicasSummary = Object.entries(chicaTotals).map(([name, fichaShare]) => ({
+        name,
+        fichaShare
+    }));
 
     const ticket = {
         id: Date.now(),
         date: new Date().toLocaleString('es-PE'),
         clientName,
         items,
-        chicas: selectedChicas,
+        chicas: chicasSummary,
         totalProducts,
-        totalFicha: fichaTotal,
-        grandTotal: totalProducts + fichaTotal
+        totalFicha,
+        grandTotal: totalProducts + totalFicha
     };
+
     tickets.push(ticket);
     saveAll();
     alert('Boleta creada! ID: ' + ticket.id);
     showPrintModal(ticket);
-    // Reset form
+
+    // Reset
     document.getElementById('clientName').value = '';
-    document.getElementById('fichaTotal').value = '0';
     renderProductSelects();
 }
 
@@ -222,6 +274,7 @@ function renderPrintPreview() {
     const include = document.getElementById('includeChicas').checked;
     const w = config.paperWidth || 58;
     document.documentElement.style.setProperty('--paper-width', w + 'mm');
+
     let html = `<div class="print-area">
         <h3 style="text-align:center;margin:0">${config.companyName}</h3>
         <p style="text-align:center;margin:0">${config.localName}</p>
@@ -236,6 +289,7 @@ function renderPrintPreview() {
     });
     html += `</table>
         <p><strong>Total Productos: S/ ${currentTicket.totalProducts.toFixed(2)}</strong></p>`;
+
     if (include && currentTicket.chicas.length) {
         html += `<hr><p><strong>Chicas / Fichas:</strong></p>`;
         currentTicket.chicas.forEach(ch => {
@@ -247,7 +301,11 @@ function renderPrintPreview() {
     document.getElementById('printPreview').innerHTML = html;
 }
 
-document.getElementById('includeChicas').addEventListener('change', renderPrintPreview);
+// Ensure listener only once
+if (!window._printListenerAdded) {
+    document.getElementById('includeChicas').addEventListener('change', renderPrintPreview);
+    window._printListenerAdded = true;
+}
 
 function doPrint() {
     window.print();
@@ -297,14 +355,19 @@ function renderAccounting() {
     });
     let html = `<h3>Resumen</h3>
         <p>Total Ventas Productos: S/ ${totalSales.toFixed(2)}</p>
-        <p>Total Fichas: S/ ${totalFichas.toFixed(2)}</p>
-        <p>Gran Total: S/ ${(totalSales + totalFichas).toFixed(2)}</p>
-        <h3>Fichas por Chica</h3><ul>`;
-    for (const [name, amt] of Object.entries(byChica)) {
-        html += `<li>${name}: S/ ${amt.toFixed(2)}</li>`;
+        <p>Total Fichas asignadas a chicas: S/ ${totalFichas.toFixed(2)}</p>
+        <p>Gran Total (productos + fichas): S/ ${(totalSales + totalFichas).toFixed(2)}</p>
+        <h3>Fichas por Chica</h3>`;
+    if (Object.keys(byChica).length === 0) {
+        html += '<p>Aún no hay fichas registradas.</p>';
+    } else {
+        html += '<ul>';
+        for (const [name, amt] of Object.entries(byChica)) {
+            html += `<li>${name}: S/ ${amt.toFixed(2)}</li>`;
+        }
+        html += '</ul>';
     }
-    html += '</ul>';
-    div.innerHTML = html || '<p>No hay datos.</p>';
+    div.innerHTML = html;
 }
 
 // Config
@@ -325,12 +388,12 @@ function saveConfig() {
 // Init
 window.onload = () => {
     showSection('nueva');
-    // Sample data if empty
     if (!products.length) {
         products = [
             { id: 1, name: 'Jarra de Cerveza', price: 50, ficha: 20 },
-            { id: 2, name: 'Whisky Botella', price: 150, ficha: 40 },
-            { id: 3, name: 'Coctel', price: 30, ficha: 10 }
+            { id: 2, name: 'Agua', price: 5, ficha: 0 },
+            { id: 3, name: 'Whisky Botella', price: 150, ficha: 40 },
+            { id: 4, name: 'Coctel', price: 30, ficha: 10 }
         ];
         saveAll();
     }
