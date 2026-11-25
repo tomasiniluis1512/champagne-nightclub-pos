@@ -2,7 +2,7 @@
 let products = JSON.parse(localStorage.getItem('products') || '[]');
 let chicas = JSON.parse(localStorage.getItem('chicas') || '[]');
 let tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
-let config = JSON.parse(localStorage.getItem('config') || '{"companyName":"Inversiones JYL S.A.C.S","localName":"Night Club Champagne","paperWidth":58}');
+let config = JSON.parse(localStorage.getItem('config') || '{"companyName":"Inversiones JYL S.A.C.S","ruc":"20615614999","localName":"Night Club Champagne","paperWidth":58}');
 
 function saveAll() {
     localStorage.setItem('products', JSON.stringify(products));
@@ -99,7 +99,7 @@ function deleteChica(i) {
     }
 }
 
-// Nueva Boleta - product rows with chica checkboxes
+// Nueva Boleta
 function renderProductSelects() {
     document.getElementById('productList').innerHTML = '';
     addProductRow();
@@ -189,7 +189,7 @@ function createTicket() {
     const items = [];
     let totalProducts = 0;
     let totalFicha = 0;
-    const chicaTotals = {}; // name -> amount
+    const chicaTotals = {};
 
     const rows = document.querySelectorAll('#productList .product-row');
     if (rows.length === 0) { alert('Agrega al menos un producto'); return; }
@@ -227,14 +227,13 @@ function createTicket() {
             subtotal: sub,
             fichaPerUnit: prod.ficha,
             fichaTotal: fichaItem,
-            assignedChicas: assigned   // empty array = solo cliente
+            assignedChicas: assigned
         });
         totalProducts += sub;
     });
 
     if (items.length === 0) { alert('Agrega al menos un producto válido'); return; }
 
-    // Build chicas summary array
     const chicasSummary = Object.entries(chicaTotals).map(([name, fichaShare]) => ({
         name,
         fichaShare
@@ -256,7 +255,6 @@ function createTicket() {
     alert('Boleta creada! ID: ' + ticket.id);
     showPrintModal(ticket);
 
-    // Reset
     document.getElementById('clientName').value = '';
     renderProductSelects();
 }
@@ -277,6 +275,7 @@ function renderPrintPreview() {
 
     let html = `<div class="print-area">
         <h3 style="text-align:center;margin:0">${config.companyName}</h3>
+        <p style="text-align:center;margin:0">RUC: ${config.ruc || '20615614999'}</p>
         <p style="text-align:center;margin:0">${config.localName}</p>
         <p style="text-align:center;font-size:10px">Boleta de Venta</p>
         <p>Fecha: ${currentTicket.date}</p>
@@ -301,7 +300,6 @@ function renderPrintPreview() {
     document.getElementById('printPreview').innerHTML = html;
 }
 
-// Ensure listener only once
 if (!window._printListenerAdded) {
     document.getElementById('includeChicas').addEventListener('change', renderPrintPreview);
     window._printListenerAdded = true;
@@ -370,15 +368,78 @@ function renderAccounting() {
     div.innerHTML = html;
 }
 
+// Excel / CSV Export
+function downloadCSV(filename, rows) {
+    const csvContent = rows.map(row => 
+        row.map(field => `"${String(field).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function exportHistorialExcel() {
+    if (!tickets.length) { alert('No hay boletas para exportar'); return; }
+    const rows = [
+        ['ID', 'Fecha', 'Cliente', 'Total Productos', 'Total Ficha', 'Gran Total', 'Chicas']
+    ];
+    tickets.forEach(t => {
+        const chNames = t.chicas.map(c => `${c.name} (S/${c.fichaShare.toFixed(2)})`).join(' | ') || '-';
+        rows.push([
+            t.id,
+            t.date,
+            t.clientName,
+            t.totalProducts.toFixed(2),
+            t.totalFicha.toFixed(2),
+            t.grandTotal.toFixed(2),
+            chNames
+        ]);
+    });
+    downloadCSV('historial_boletas_champagne.csv', rows);
+}
+
+function exportContabilidadExcel() {
+    let totalSales = 0, totalFichas = 0;
+    const byChica = {};
+    tickets.forEach(t => {
+        totalSales += t.totalProducts;
+        totalFichas += t.totalFicha;
+        t.chicas.forEach(ch => {
+            byChica[ch.name] = (byChica[ch.name] || 0) + ch.fichaShare;
+        });
+    });
+
+    const rows = [
+        ['Concepto', 'Monto'],
+        ['Total Ventas Productos', totalSales.toFixed(2)],
+        ['Total Fichas', totalFichas.toFixed(2)],
+        ['Gran Total', (totalSales + totalFichas).toFixed(2)],
+        [''],
+        ['Chica', 'Total Ficha']
+    ];
+    for (const [name, amt] of Object.entries(byChica)) {
+        rows.push([name, amt.toFixed(2)]);
+    }
+    downloadCSV('contabilidad_champagne.csv', rows);
+}
+
 // Config
 function loadConfig() {
-    document.getElementById('companyName').value = config.companyName;
-    document.getElementById('localName').value = config.localName;
-    document.getElementById('paperWidth').value = config.paperWidth;
+    document.getElementById('companyName').value = config.companyName || 'Inversiones JYL S.A.C.S';
+    document.getElementById('ruc').value = config.ruc || '20615614999';
+    document.getElementById('localName').value = config.localName || 'Night Club Champagne';
+    document.getElementById('paperWidth').value = config.paperWidth || 58;
 }
 
 function saveConfig() {
     config.companyName = document.getElementById('companyName').value;
+    config.ruc = document.getElementById('ruc').value;
     config.localName = document.getElementById('localName').value;
     config.paperWidth = parseInt(document.getElementById('paperWidth').value) || 58;
     saveAll();
@@ -387,6 +448,8 @@ function saveConfig() {
 
 // Init
 window.onload = () => {
+    // Ensure RUC exists in old configs
+    if (!config.ruc) config.ruc = '20615614999';
     showSection('nueva');
     if (!products.length) {
         products = [
