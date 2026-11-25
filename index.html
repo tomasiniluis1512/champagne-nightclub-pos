@@ -27,15 +27,11 @@
             <h2>Nueva Boleta</h2>
             <label>Nombre del Cliente: <input type="text" id="clientName" placeholder="Opcional"></label>
             <h3>Productos</h3>
+            <p style="font-size:14px;color:#aaa;">Por cada producto marca las chicas que se llevan la ficha de ese producto.<br>Si no marcas ninguna, la ficha es solo del cliente (nadie se la lleva).</p>
             <div id="productList"></div>
             <button onclick="addProductRow()">+ Agregar Producto</button>
-            <h3>Chicas (Fichas)</h3>
-            <div id="chicaList"></div>
-            <button onclick="addChicaRow()">+ Agregar Chica</button>
-            <label>Ficha Total (S/): <input type="number" id="fichaTotal" value="0" step="0.01" min="0"></label>
-            <p id="fichaDivision"></p>
+            <div id="fichaSummary" style="margin:15px 0; padding:10px; background:#333; border-radius:5px;"></div>
             <button onclick="createTicket()">Crear Boleta</button>
-            <div id="ticketPreview"></div>
         </section>
 
         <!-- Productos -->
@@ -44,7 +40,7 @@
             <form onsubmit="addProduct(event)">
                 <input type="text" id="prodName" placeholder="Nombre producto" required>
                 <input type="number" id="prodPrice" placeholder="Precio S/" step="0.01" required>
-                <input type="number" id="prodFicha" placeholder="Ficha default S/" step="0.01" value="0">
+                <input type="number" id="prodFicha" placeholder="Ficha por unidad S/" step="0.01" value="0">
                 <button type="submit">Agregar</button>
             </form>
             <div id="productsTable"></div>
