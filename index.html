@@ -51,7 +51,7 @@ th,td{border:1px solid #444;padding:8px}
 <div id="productList"></div>
 <button onclick="addProductRow()">+ Agregar Producto</button>
 <div id="fichaSummary" style="margin:15px 0;padding:10px;background:#333;border-radius:5px"></div>
-<button onclick="createTicket()">Crear Boleta</button>
+<button onclick="createTicket()">Crear Boleta / Guardar en Mesa</button>
 </section>
 <section id="productos">
 <h2>Gestión de Productos</h2>
@@ -108,6 +108,7 @@ let chicas = JSON.parse(localStorage.getItem('chicas') || '[]');
 let tickets = JSON.parse(localStorage.getItem('tickets') || '[]');
 let mesas = JSON.parse(localStorage.getItem('mesas') || '[]');
 let config = JSON.parse(localStorage.getItem('config') || '{"companyName":"Inversiones JYL S.A.C.S","ruc":"20615614999","address":"Jr. Yavari 1781","localName":"","serie":"B001","nextNumber":1,"paperWidth":58}');
+let currentMesaId = null;
 
 function saveAll(){
     localStorage.setItem('products', JSON.stringify(products));
@@ -151,10 +152,12 @@ function renderMesas(){
 }
 
 function selectMesa(id){
+    currentMesaId = id;
     const mesa=mesas.find(m=>m.id===id);
     if(!mesa) return;
     document.getElementById('clientName').value = mesa.clientName || '';
     showSection('nueva');
+    alert('Editando ' + mesa.name + '. Agrega productos y presiona el botón para guardar en la mesa.');
 }
 
 function closeMesa(id){
@@ -305,6 +308,22 @@ function createTicket(){
         total+=sub;
     });
     if(!items.length){ alert('Agrega al menos un producto'); return; }
+
+    if(currentMesaId){
+        const mesa = mesas.find(m => m.id === currentMesaId);
+        if(mesa){
+            mesa.clientName = client;
+            mesa.items = items;
+            mesa.chicas = Object.entries(chicaTot).map(([name,fichaShare])=>({name,fichaShare}));
+            mesa.totalFicha = ficha;
+            saveAll();
+            alert('Productos guardados en ' + mesa.name);
+            currentMesaId = null;
+            showSection('mesas');
+            return;
+        }
+    }
+
     const num=config.nextNumber||1;
     const ticket={
         id:Date.now(),
