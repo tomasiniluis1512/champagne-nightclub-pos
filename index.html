@@ -37,6 +37,7 @@ th,td{border:1px solid #444;padding:8px}
 <button onclick="showSection('contabilidad')">Contabilidad</button>
 <button onclick="showSection('cierre')">Cierre de Caja</button>
 <button onclick="showSection('pagos')">Pagos Chicas</button>
+<button onclick="showSection('gastos')">Gastos</button>
 <button onclick="showSection('config')">Configuración</button>
 </nav>
 <main>
@@ -86,8 +87,17 @@ th,td{border:1px solid #444;padding:8px}
 <section id="cierre">
 <h2>Cierre de Caja del Día</h2>
 <button onclick="showCierreHoy()" style="background:#1a7f37">Ver Cierre de Hoy</button>
-<button onclick="cerrarCaja()" style="background:#c00; margin-left:10px;">Cerrar Caja del Día</button>
+<button onclick="cerrarCaja()" style="background:#c00; margin-left:10px;">Guardar Cierre de Caja</button>
 <div id="cierreResult" style="margin-top:20px;"></div>
+</section>
+<section id="gastos">
+<h2>Gastos del Día</h2>
+<form onsubmit="addGasto(event)">
+<input type="text" id="gastoDesc" placeholder="Descripción del gasto" required>
+<input type="number" id="gastoMonto" placeholder="Monto S/" step="0.01" required>
+<button type="submit">Agregar Gasto</button>
+</form>
+<div id="gastosList" style="margin-top:15px;"></div>
 </section>
 <section id="pagos">
 <h2>Pagos a Chicas</h2>
@@ -122,6 +132,8 @@ let mesas = JSON.parse(localStorage.getItem('mesas') || '[]');
 let config = JSON.parse(localStorage.getItem('config') || '{"companyName":"Inversiones JYL S.A.C.S","ruc":"20615614999","address":"Jr. Yavari 1781","localName":"","serie":"B001","nextNumber":1,"paperWidth":58}');
 let currentMesaId = null;
 let pagosChicas = JSON.parse(localStorage.getItem('pagosChicas') || '{}');
+let gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
+let cierres = JSON.parse(localStorage.getItem('cierres') || '[]');
 
 function saveAll(){
     localStorage.setItem('products', JSON.stringify(products));
@@ -130,6 +142,8 @@ function saveAll(){
     localStorage.setItem('mesas', JSON.stringify(mesas));
     localStorage.setItem('config', JSON.stringify(config));
     localStorage.setItem('pagosChicas', JSON.stringify(pagosChicas));
+    localStorage.setItem('gastos', JSON.stringify(gastos));
+    localStorage.setItem('cierres', JSON.stringify(cierres));
 }
 
 function showSection(id){
@@ -143,6 +157,7 @@ function showSection(id){
     if(id==='contabilidad') renderAccounting();
     if(id==='cierre') showCierreHoy();
     if(id==='pagos') renderPagos();
+    if(id==='gastos') renderGastos();
     if(id==='config') loadConfig();
     if(id==='nueva') renderProductSelects();
 }
@@ -450,7 +465,7 @@ function reprint(id){
 
 function renderAccounting(){
     const div=document.getElementById('accounting');
-    let sales=0, fichas=0;
+    let sales=0, fichas=0, totalGastos=0;
     const by={};
     tickets.forEach(t=>{
         if(t.cancelled) return;
@@ -458,7 +473,8 @@ function renderAccounting(){
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
-    let html=`<p>Total Ventas: S/ ${sales.toFixed(2)}</p><p>Total Fichas: S/ ${fichas.toFixed(2)}</p><p>Neto (Ventas - Fichas): S/ ${(sales - fichas).toFixed(2)}</p><h3>Por chica</h3><ul>`;
+    gastos.forEach(g => totalGastos += g.monto || 0);
+    let html=`<p>Total Ventas: S/ ${sales.toFixed(2)}</p><p>Total Fichas: S/ ${fichas.toFixed(2)}</p><p>Total Gastos: S/ ${totalGastos.toFixed(2)}</p><p>Neto (Ventas - Fichas - Gastos): S/ ${(sales - fichas - totalGastos).toFixed(2)}</p><h3>Por chica</h3><ul>`;
     for(const [n,a] of Object.entries(by)) html+=`<li>${n}: S/ ${a.toFixed(2)}</li>`;
     div.innerHTML=html+'</ul>';
 }
@@ -479,7 +495,7 @@ function exportHistorialExcel(){
 }
 
 function exportContabilidadExcel(){
-    let sales=0, fichas=0;
+    let sales=0, fichas=0, totalGastos=0;
     const by={};
     tickets.forEach(t=>{
         if(t.cancelled) return;
@@ -487,7 +503,8 @@ function exportContabilidadExcel(){
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
-    const rows=[['Concepto','Monto'],['Ventas',sales.toFixed(2)],['Fichas',fichas.toFixed(2)],['Neto',(sales-fichas).toFixed(2)],[''],['Chica','Ficha']];
+    gastos.forEach(g => totalGastos += g.monto || 0);
+    const rows=[['Concepto','Monto'],['Ventas',sales.toFixed(2)],['Fichas',fichas.toFixed(2)],['Gastos',totalGastos.toFixed(2)],['Neto',(sales-fichas-totalGastos).toFixed(2)],[''],['Chica','Ficha']];
     for(const [n,a] of Object.entries(by)) rows.push([n, a.toFixed(2)]);
     downloadCSV('contabilidad.csv', rows);
 }
@@ -553,7 +570,7 @@ function pagarChica(name, total){
 }
 
 function showCierreHoy(){
-    let sales=0, fichas=0, count=0;
+    let sales=0, fichas=0, count=0, totalGastos=0;
     const byChica={};
     const today = new Date().toLocaleDateString('es-PE');
     tickets.forEach(t => {
@@ -564,21 +581,93 @@ function showCierreHoy(){
         count++;
         (t.chicas||[]).forEach(ch => byChica[ch.name]=(byChica[ch.name]||0)+ch.fichaShare);
     });
+    gastos.forEach(g => {
+        if((g.date||'').includes(today)) totalGastos += g.monto || 0;
+    });
+    const neto = sales - fichas - totalGastos;
     let html = `<h3>Resumen del día</h3>
     <p>Boletas: ${count}</p>
     <p>Total Ventas: S/ ${sales.toFixed(2)}</p>
     <p>Total Fichas: S/ ${fichas.toFixed(2)}</p>
-    <p>Neto (Ventas - Fichas): S/ ${(sales - fichas).toFixed(2)}</p>
+    <p>Total Gastos: S/ ${totalGastos.toFixed(2)}</p>
+    <p><strong>Neto (Ventas - Fichas - Gastos): S/ ${neto.toFixed(2)}</strong></p>
     <h4>Fichas por chica</h4><ul>`;
     for(const [n,a] of Object.entries(byChica)) html += `<li>${n}: S/ ${a.toFixed(2)}</li>`;
+    html += '</ul><h4>Cierres anteriores</h4><ul>';
+    cierres.slice().reverse().slice(0,10).forEach(c => {
+        html += `<li>${c.fechaHora}: Neto S/ ${c.neto.toFixed(2)} (${c.boletas} boletas)</li>`;
+    });
     html += '</ul>';
     document.getElementById('cierreResult').innerHTML = html;
 }
 
 function cerrarCaja(){
-    if(!confirm('¿Cerrar caja del día? Esto solo genera el resumen (no borra datos).')) return;
+    if(!confirm('¿Guardar cierre de caja de hoy?')) return;
+    let sales=0, fichas=0, count=0, totalGastos=0;
+    const today = new Date().toLocaleDateString('es-PE');
+    tickets.forEach(t => {
+        if(t.cancelled) return;
+        if(!(t.date||'').includes(today)) return;
+        sales += t.totalProducts || 0;
+        fichas += t.totalFicha || 0;
+        count++;
+    });
+    gastos.forEach(g => {
+        if((g.date||'').includes(today)) totalGastos += g.monto || 0;
+    });
+    const neto = sales - fichas - totalGastos;
+    const cierre = {
+        id: Date.now(),
+        fechaHora: new Date().toLocaleString('es-PE'),
+        boletas: count,
+        ventas: sales,
+        fichas: fichas,
+        gastos: totalGastos,
+        neto: neto
+    };
+    cierres.push(cierre);
+    saveAll();
     showCierreHoy();
-    alert('Cierre de caja generado. Puedes exportar desde Contabilidad o Historial.');
+    alert('Cierre de caja guardado.');
+}
+
+function addGasto(e){
+    e.preventDefault();
+    const desc = document.getElementById('gastoDesc').value.trim();
+    const monto = parseFloat(document.getElementById('gastoMonto').value);
+    if(!desc || isNaN(monto)) return;
+    gastos.push({
+        id: Date.now(),
+        desc,
+        monto,
+        date: new Date().toLocaleString('es-PE')
+    });
+    saveAll();
+    e.target.reset();
+    renderGastos();
+}
+
+function renderGastos(){
+    const div = document.getElementById('gastosList');
+    if(!gastos.length){ div.innerHTML='<p>No hay gastos registrados.</p>'; return; }
+    let html = '<table><tr><th>Fecha</th><th>Descripción</th><th>Monto</th><th></th></tr>';
+    gastos.slice().reverse().forEach((g,i) => {
+        html += `<tr>
+            <td>${g.date}</td>
+            <td>${g.desc}</td>
+            <td>S/ ${g.monto.toFixed(2)}</td>
+            <td><button onclick="deleteGasto(${gastos.length-1-i})">Eliminar</button></td>
+        </tr>`;
+    });
+    div.innerHTML = html + '</table>';
+}
+
+function deleteGasto(i){
+    if(confirm('¿Eliminar gasto?')){
+        gastos.splice(i,1);
+        saveAll();
+        renderGastos();
+    }
 }
 
 window.onload=()=>{
