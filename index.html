@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS Champagne - Inversiones JYL S.A.C.S</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>Night Club Champagne</h1>
+        <p>Inversiones JYL S.A.C.S | Sistema de Boletas y Ventas</p>
+    </header>
+
+    <nav>
+        <button onclick="showSection('nueva')">Nueva Boleta</button>
+        <button onclick="showSection('productos')">Productos</button>
+        <button onclick="showSection('chicas')">Chicas</button>
+        <button onclick="showSection('historial')">Historial</button>
+        <button onclick="showSection('contabilidad')">Contabilidad</button>
+        <button onclick="showSection('config')">Configuración</button>
+    </nav>
+
+    <main>
+        <!-- Nueva Boleta -->
+        <section id="nueva" class="active">
+            <h2>Nueva Boleta</h2>
+            <label>Nombre del Cliente: <input type="text" id="clientName" placeholder="Opcional"></label>
+            <h3>Productos</h3>
+            <div id="productList"></div>
+            <button onclick="addProductRow()">+ Agregar Producto</button>
+            <h3>Chicas (Fichas)</h3>
+            <div id="chicaList"></div>
+            <button onclick="addChicaRow()">+ Agregar Chica</button>
+            <label>Ficha Total (S/): <input type="number" id="fichaTotal" value="0" step="0.01" min="0"></label>
+            <p id="fichaDivision"></p>
+            <button onclick="createTicket()">Crear Boleta</button>
+            <div id="ticketPreview"></div>
+        </section>
+
+        <!-- Productos -->
+        <section id="productos">
+            <h2>Gestión de Productos</h2>
+            <form onsubmit="addProduct(event)">
+                <input type="text" id="prodName" placeholder="Nombre producto" required>
+                <input type="number" id="prodPrice" placeholder="Precio S/" step="0.01" required>
+                <input type="number" id="prodFicha" placeholder="Ficha default S/" step="0.01" value="0">
+                <button type="submit">Agregar</button>
+            </form>
+            <div id="productsTable"></div>
+        </section>
+
+        <!-- Chicas -->
+        <section id="chicas">
+            <h2>Gestión de Chicas</h2>
+            <form onsubmit="addChica(event)">
+                <input type="text" id="chicaName" placeholder="Nombre de la chica" required>
+                <button type="submit">Agregar</button>
+            </form>
+            <div id="chicasTable"></div>
+        </section>
+
+        <!-- Historial -->
+        <section id="historial">
+            <h2>Historial de Boletas</h2>
+            <div id="ticketsList"></div>
+        </section>
+
+        <!-- Contabilidad -->
+        <section id="contabilidad">
+            <h2>Contabilidad</h2>
+            <div id="accounting"></div>
+        </section>
+
+        <!-- Config -->
+        <section id="config">
+            <h2>Configuración</h2>
+            <label>Nombre Empresa: <input type="text" id="companyName" value="Inversiones JYL S.A.C.S"></label>
+            <label>Nombre Local: <input type="text" id="localName" value="Night Club Champagne"></label>
+            <label>Ancho papel impresión (mm): <input type="number" id="paperWidth" value="58" min="40" max="80"></label>
+            <button onclick="saveConfig()">Guardar Config</button>
+        </section>
+    </main>
+
+    <!-- Print Modal -->
+    <div id="printModal" class="modal">
+        <div class="modal-content">
+            <h3>Imprimir Boleta</h3>
+            <label><input type="checkbox" id="includeChicas" checked> Incluir nombres de chicas y fichas en la boleta</label>
+            <div id="printPreview" class="print-area"></div>
+            <button onclick="doPrint()">Imprimir</button>
+            <button onclick="closeModal()">Cerrar</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
