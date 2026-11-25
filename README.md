@@ -6,40 +6,39 @@ Sistema web simple para control de boletas, notas de ventas, gestión de product
 
 ## Características
 
-- Gestión de productos (precios editables, ficha default)
+- Gestión de productos (precio + ficha por unidad)
 - Registro de chicas
-- Creación de boletas con múltiples productos y múltiples chicas
-- División automática de la ficha entre las chicas de la boleta
-- Contabilidad completa (ventas y fichas por chica) siempre en el sistema
+- **Ficha automática por producto**: cada producto ya tiene su ficha definida
+- En cada boleta, **por cada producto** puedes asignar la ficha a:
+  - Una sola chica
+  - Varias chicas (se divide entre ellas)
+  - Ninguna (solo cliente, nadie se lleva ficha de ese producto)
+- Contabilidad completa siempre en el sistema (aunque no se imprima)
 - Impresión de boletas:
-  - Opción para incluir o **no** incluir nombres de chicas y montos de ficha en la boleta impresa
-  - Soporte especial para papel de **58 mm** (rollo POS clásico)
+  - Opción para incluir o **no** incluir nombres de chicas y fichas
+  - Soporte especial para papel de **58 mm**
   - Ancho de papel configurable
 - Historial de boletas
 - Datos guardados en el navegador (localStorage)
 
 ## Cómo usar
 
-1. Abre `index.html` en un navegador (Chrome, Edge, etc. recomendado para impresión).
-2. Configura productos y chicas en sus pestañas.
-3. En "Nueva Boleta":
-   - Agrega productos y cantidades
-   - Agrega las chicas que participan
-   - Define el monto total de ficha (se divide automáticamente)
+1. Abre `index.html` en un navegador (Chrome o Edge recomendado).
+2. Configura productos (con su ficha) y chicas.
+3. En **Nueva Boleta**:
+   - Agrega productos y cantidad
+   - En cada producto marca las chicas que se llevan la ficha de ese producto (o no marques ninguna)
+   - El resumen se actualiza solo
    - Crea la boleta
-4. En el modal de impresión, marca o desmarca "Incluir nombres de chicas..." según si quieres que salga en la boleta o no.
-5. Imprime. El sistema usa estilos optimizados para 58mm.
+4. Al imprimir elige si quieres que salgan las chicas o no.
 
-## Impresión 58mm
+## Ejemplo
 
-- Ve a Configuración y ajusta el ancho si es necesario.
-- Al imprimir, el navegador debe estar configurado para papel térmico o personalizado.
-- Los estilos `@media print` ocultan la interfaz y muestran solo la boleta.
+- Jarra de Cerveza (ficha S/20) → marcas 2 chicas → S/10 cada una
+- Agua (ficha S/0 o la que pongas) → no marcas ninguna chica → solo cliente
 
-## Datos de ejemplo
-
-Al iniciar por primera vez carga productos de ejemplo (Jarra de Cerveza S/50 con ficha 20, etc.) y chicas de ejemplo.
+Todo queda registrado en Contabilidad.
 
 ---
 
-Desarrollado para el Night Club Champagne. Todos los datos quedan en el navegador local.
+Desarrollado para el Night Club Champagne.
