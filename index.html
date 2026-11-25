@@ -401,12 +401,46 @@ function closeModal(){ document.getElementById('printModal').style.display='none
 function renderHistorial(){
     const div=document.getElementById('ticketsList');
     if(!tickets.length){ div.innerHTML='<p>No hay boletas.</p>'; return; }
-    let html='<table><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Total</th><th></th></tr>';
+    let html='<table><tr><th>N°</th><th>Fecha</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Acciones</th></tr>';
     tickets.slice().reverse().forEach(t=>{
-        html+=`<tr><td>${t.numeroCompleto}</td><td>${t.date}</td><td>${t.clientName}</td><td>S/ ${t.totalProducts.toFixed(2)}</td>
-        <td><button onclick="reprint(${t.id})">Reimprimir</button></td></tr>`;
+        const cancelled = t.cancelled;
+        const style = cancelled ? 'text-decoration:line-through; color:#888;' : '';
+        const estado = cancelled ? 'Anulada' : 'Activa';
+        html+=`<tr style="${style}">
+            <td>${t.numeroCompleto}</td>
+            <td>${t.date}</td>
+            <td>${t.clientName}</td>
+            <td>S/ ${(t.totalProducts||0).toFixed(2)}</td>
+            <td>${estado}</td>
+            <td>
+                <button onclick="reprint(${t.id})">Reimprimir</button>
+                ${!cancelled ? `<button onclick="editTicket(${t.id})">Modificar</button> <button onclick="cancelTicket(${t.id})" style="background:#c00">Anular</button>` : ''}
+            </td>
+        </tr>`;
     });
     div.innerHTML=html+'</table>';
+}
+
+function cancelTicket(id){
+    if(!confirm('¿Anular esta boleta? Seguirá visible pero tachada.')) return;
+    const t = tickets.find(x => x.id === id);
+    if(t){
+        t.cancelled = true;
+        saveAll();
+        renderHistorial();
+        alert('Boleta anulada.');
+    }
+}
+
+function editTicket(id){
+    const t = tickets.find(x => x.id === id);
+    if(!t || t.cancelled) return;
+    const newClient = prompt('Nuevo nombre de cliente:', t.clientName);
+    if(newClient !== null){
+        t.clientName = newClient.trim() || t.clientName;
+        saveAll();
+        renderHistorial();
+    }
 }
 
 function reprint(id){
@@ -419,6 +453,7 @@ function renderAccounting(){
     let sales=0, fichas=0;
     const by={};
     tickets.forEach(t=>{
+        if(t.cancelled) return;
         sales+=t.totalProducts||0;
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
@@ -438,8 +473,8 @@ function downloadCSV(name, rows){
 
 function exportHistorialExcel(){
     if(!tickets.length) return alert('Nada que exportar');
-    const rows=[['Número','Fecha','Cliente','Total','Ficha']];
-    tickets.forEach(t=>rows.push([t.numeroCompleto,t.date,t.clientName,t.totalProducts.toFixed(2),(t.totalFicha||0).toFixed(2)]));
+    const rows=[['Número','Fecha','Cliente','Total','Ficha','Estado']];
+    tickets.forEach(t=>rows.push([t.numeroCompleto,t.date,t.clientName,t.totalProducts.toFixed(2),(t.totalFicha||0).toFixed(2), t.cancelled ? 'Anulada' : 'Activa']));
     downloadCSV('historial.csv', rows);
 }
 
@@ -447,6 +482,7 @@ function exportContabilidadExcel(){
     let sales=0, fichas=0;
     const by={};
     tickets.forEach(t=>{
+        if(t.cancelled) return;
         sales+=t.totalProducts||0;
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
@@ -482,6 +518,7 @@ function renderPagos(){
     const div = document.getElementById('pagosList');
     const by = {};
     tickets.forEach(t => {
+        if(t.cancelled) return;
         (t.chicas||[]).forEach(ch => {
             by[ch.name] = (by[ch.name] || 0) + ch.fichaShare;
         });
@@ -520,6 +557,7 @@ function showCierreHoy(){
     const byChica={};
     const today = new Date().toLocaleDateString('es-PE');
     tickets.forEach(t => {
+        if(t.cancelled) return;
         if(!(t.date||'').includes(today)) return;
         sales += t.totalProducts || 0;
         fichas += t.totalFicha || 0;
