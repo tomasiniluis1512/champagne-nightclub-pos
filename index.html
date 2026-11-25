@@ -59,12 +59,14 @@
         <!-- Historial -->
         <section id="historial">
             <h2>Historial de Boletas</h2>
+            <button onclick="exportHistorialExcel()" style="margin-bottom:15px; background:#1a7f37;">Exportar Historial a Excel</button>
             <div id="ticketsList"></div>
         </section>
 
         <!-- Contabilidad -->
         <section id="contabilidad">
             <h2>Contabilidad</h2>
+            <button onclick="exportContabilidadExcel()" style="margin-bottom:15px; background:#1a7f37;">Exportar Contabilidad a Excel</button>
             <div id="accounting"></div>
         </section>
 
@@ -72,6 +74,7 @@
         <section id="config">
             <h2>Configuración</h2>
             <label>Nombre Empresa: <input type="text" id="companyName" value="Inversiones JYL S.A.C.S"></label>
+            <label>RUC: <input type="text" id="ruc" value="20615614999"></label>
             <label>Nombre Local: <input type="text" id="localName" value="Night Club Champagne"></label>
             <label>Ancho papel impresión (mm): <input type="number" id="paperWidth" value="58" min="40" max="80"></label>
             <button onclick="saveConfig()">Guardar Config</button>
