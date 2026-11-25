@@ -4,7 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>POS Champagne - Inversiones JYL S.A.C.S</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 10px; background: #1a1a1a; color: #eee; }
+        header { background: #c00000; padding: 20px; text-align: center; margin: -10px -10px 15px -10px; }
+        h1 { margin: 0; color: gold; font-size: 2.2em; text-shadow: 1px 1px 2px #000; }
+        header p { margin: 5px 0 0 0; color: white; font-size: 0.95em; }
+        nav { margin: 15px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+        nav button { background: #333; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; }
+        nav button:hover { background: #555; }
+        section { display: none; background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        section.active { display: block; }
+        label { display: block; margin: 10px 0; }
+        input, select { padding: 8px; margin: 5px; border-radius: 4px; border: 1px solid #555; background: #333; color: white; }
+        button { background: #c00; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #e00; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #444; padding: 8px; text-align: left; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+        .modal-content { background: #222; padding: 20px; border-radius: 8px; max-width: 400px; width: 90%; }
+        .print-area { background: white; color: black; padding: 10px; margin: 10px 0; font-family: 'Courier New', monospace; font-size: 12px; }
+        @media print {
+            body * { visibility: hidden; }
+            #printPreview, #printPreview * { visibility: visible; }
+            #printPreview { position: absolute; left: 0; top: 0; width: var(--paper-width, 58mm); background: white; color: black; }
+            .print-area { width: 100%; font-size: 10px; line-height: 1.2; }
+            button, nav, header, section, .modal { display: none !important; }
+        }
+        .product-row { background: #333 !important; padding: 12px; margin: 8px 0; border-radius: 6px; }
+    </style>
 </head>
 <body>
     <header>
@@ -22,7 +49,6 @@
     </nav>
 
     <main>
-        <!-- Nueva Boleta -->
         <section id="nueva" class="active">
             <h2>Nueva Boleta</h2>
             <label>Nombre del Cliente: <input type="text" id="clientName" placeholder="Opcional"></label>
@@ -34,7 +60,6 @@
             <button onclick="createTicket()">Crear Boleta</button>
         </section>
 
-        <!-- Productos -->
         <section id="productos">
             <h2>Gestión de Productos</h2>
             <form onsubmit="addProduct(event)">
@@ -46,7 +71,6 @@
             <div id="productsTable"></div>
         </section>
 
-        <!-- Chicas -->
         <section id="chicas">
             <h2>Gestión de Chicas</h2>
             <form onsubmit="addChica(event)">
@@ -56,21 +80,18 @@
             <div id="chicasTable"></div>
         </section>
 
-        <!-- Historial -->
         <section id="historial">
             <h2>Historial de Boletas</h2>
             <button onclick="exportHistorialExcel()" style="margin-bottom:15px; background:#1a7f37;">Exportar Historial a Excel</button>
             <div id="ticketsList"></div>
         </section>
 
-        <!-- Contabilidad -->
         <section id="contabilidad">
             <h2>Contabilidad</h2>
             <button onclick="exportContabilidadExcel()" style="margin-bottom:15px; background:#1a7f37;">Exportar Contabilidad a Excel</button>
             <div id="accounting"></div>
         </section>
 
-        <!-- Config -->
         <section id="config">
             <h2>Configuración</h2>
             <label>Nombre Empresa: <input type="text" id="companyName" value="Inversiones JYL S.A.C.S"></label>
@@ -84,7 +105,6 @@
         </section>
     </main>
 
-    <!-- Print Modal -->
     <div id="printModal" class="modal">
         <div class="modal-content">
             <h3>Imprimir Boleta</h3>
