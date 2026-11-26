@@ -164,27 +164,18 @@ function showSection(id){
     if(id==='nueva') renderProductSelects();
 }
 
-function isAfterLastCierre(dateStr){
-    if(!lastCierreTime || !dateStr) return true;
+function isAfterLastCierre(item){
+    if(!lastCierreTime) return true;
+    if(item && typeof item === 'object' && item.timestamp){
+        return item.timestamp > lastCierreTime;
+    }
+    const dateStr = (item && item.date) ? item.date : item;
+    if(!dateStr) return true;
     try{
-        const parts = dateStr.split(/[\s,/]+/);
-        let d;
-        if(parts.length >= 3){
-            const datePart = parts[0].split('/');
-            if(datePart.length === 3){
-                const day = parseInt(datePart[0]);
-                const month = parseInt(datePart[1]) - 1;
-                const year = parseInt(datePart[2]);
-                d = new Date(year, month, day);
-                if(parts.length > 1 && parts[1].includes(':')){
-                    const time = parts[1].split(':');
-                    d.setHours(parseInt(time[0])||0, parseInt(time[1])||0, parseInt(time[2])||0);
-                }
-            }
-        }
-        if(!d || isNaN(d.getTime())) d = new Date(dateStr);
-        return d.getTime() > lastCierreTime;
-    }catch(e){ return true; }
+        const d = new Date(dateStr);
+        if(!isNaN(d.getTime())) return d.getTime() > lastCierreTime;
+    }catch(e){}
+    return true;
 }
 
 function openNewMesa(){
@@ -226,6 +217,7 @@ function closeMesa(id){
         id:Date.now(),
         numeroCompleto:(config.serie||'B001')+'-'+String(num).padStart(8,'0'),
         date:new Date().toLocaleString('es-PE'),
+        timestamp: Date.now(),
         clientName:mesa.clientName||mesa.name,
         items:mesa.items,
         chicas:mesa.chicas||[],
@@ -385,6 +377,7 @@ function createTicket(){
         id:Date.now(),
         numeroCompleto:(config.serie||'B001')+'-'+String(num).padStart(8,'0'),
         date:new Date().toLocaleString('es-PE'),
+        timestamp: Date.now(),
         clientName:client,
         items,
         chicas:Object.entries(chicaTot).map(([name,fichaShare])=>({name,fichaShare})),
@@ -494,13 +487,13 @@ function renderAccounting(){
     const by={};
     tickets.forEach(t=>{
         if(t.cancelled) return;
-        if(!isAfterLastCierre(t.date)) return;
+        if(!isAfterLastCierre(t)) return;
         sales+=t.totalProducts||0;
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
     gastos.forEach(g => {
-        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
+        if(isAfterLastCierre(g)) totalGastos += g.monto || 0;
     });
     let html=`<p>Total Ventas: S/ ${sales.toFixed(2)}</p><p>Total Fichas: S/ ${fichas.toFixed(2)}</p><p>Total Gastos: S/ ${totalGastos.toFixed(2)}</p><p>Neto (Ventas - Fichas - Gastos): S/ ${(sales - fichas - totalGastos).toFixed(2)}</p><h3>Por chica</h3><ul>`;
     for(const [n,a] of Object.entries(by)) html+=`<li>${n}: S/ ${a.toFixed(2)}</li>`;
@@ -527,13 +520,13 @@ function exportContabilidadExcel(){
     const by={};
     tickets.forEach(t=>{
         if(t.cancelled) return;
-        if(!isAfterLastCierre(t.date)) return;
+        if(!isAfterLastCierre(t)) return;
         sales+=t.totalProducts||0;
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
     gastos.forEach(g => {
-        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
+        if(isAfterLastCierre(g)) totalGastos += g.monto || 0;
     });
     const rows=[['Concepto','Monto'],['Ventas',sales.toFixed(2)],['Fichas',fichas.toFixed(2)],['Gastos',totalGastos.toFixed(2)],['Neto',(sales-fichas-totalGastos).toFixed(2)],[''],['Chica','Ficha']];
     for(const [n,a] of Object.entries(by)) rows.push([n, a.toFixed(2)]);
@@ -605,14 +598,14 @@ function showCierreHoy(){
     const byChica={};
     tickets.forEach(t => {
         if(t.cancelled) return;
-        if(!isAfterLastCierre(t.date)) return;
+        if(!isAfterLastCierre(t)) return;
         sales += t.totalProducts || 0;
         fichas += t.totalFicha || 0;
         count++;
         (t.chicas||[]).forEach(ch => byChica[ch.name]=(byChica[ch.name]||0)+ch.fichaShare);
     });
     gastos.forEach(g => {
-        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
+        if(isAfterLastCierre(g)) totalGastos += g.monto || 0;
     });
     const neto = sales - fichas - totalGastos;
     let html = `<h3>Resumen del período actual</h3>
@@ -636,18 +629,18 @@ function cerrarCaja(){
     let sales=0, fichas=0, count=0, totalGastos=0;
     tickets.forEach(t => {
         if(t.cancelled) return;
-        if(!isAfterLastCierre(t.date)) return;
+        if(!isAfterLastCierre(t)) return;
         sales += t.totalProducts || 0;
         fichas += t.totalFicha || 0;
         count++;
     });
     gastos.forEach(g => {
-        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
+        if(isAfterLastCierre(g)) totalGastos += g.monto || 0;
     });
     const neto = sales - fichas - totalGastos;
     const ahora = Date.now();
-    const ticketsDelPeriodo = tickets.filter(t => !t.cancelled && isAfterLastCierre(t.date));
-    const gastosDelPeriodo = gastos.filter(g => isAfterLastCierre(g.date));
+    const ticketsDelPeriodo = tickets.filter(t => !t.cancelled && isAfterLastCierre(t));
+    const gastosDelPeriodo = gastos.filter(g => isAfterLastCierre(g));
     const byChica = {};
     ticketsDelPeriodo.forEach(t => {
         (t.chicas||[]).forEach(ch => byChica[ch.name] = (byChica[ch.name]||0) + ch.fichaShare);
@@ -686,7 +679,8 @@ function addGasto(e){
         id: Date.now(),
         desc,
         monto,
-        date: new Date().toLocaleString('es-PE')
+        date: new Date().toLocaleString('es-PE'),
+        timestamp: Date.now()
     });
     saveAll();
     e.target.reset();
