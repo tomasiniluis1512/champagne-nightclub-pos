@@ -170,7 +170,8 @@ function isAfterLastCierre(item){
     if(item && typeof item === 'object' && item.timestamp){
         return Number(item.timestamp) > cutoff;
     }
-    return true;
+    // Items without timestamp are treated as OLD (before the last cierre)
+    return false;
 }
 
 function openNewMesa(){
