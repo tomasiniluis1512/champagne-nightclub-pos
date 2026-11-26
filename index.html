@@ -134,7 +134,7 @@ let currentMesaId = null;
 let pagosChicas = JSON.parse(localStorage.getItem('pagosChicas') || '{}');
 let gastos = JSON.parse(localStorage.getItem('gastos') || '[]');
 let cierres = JSON.parse(localStorage.getItem('cierres') || '[]');
-let lastCierreTime = parseInt(localStorage.getItem('lastCierreTime') || '0');
+let lastCierreTime = Number(localStorage.getItem('lastCierreTime') || 0);
 
 function saveAll(){
     localStorage.setItem('products', JSON.stringify(products));
@@ -165,16 +165,11 @@ function showSection(id){
 }
 
 function isAfterLastCierre(item){
-    if(!lastCierreTime) return true;
+    const cutoff = Number(lastCierreTime) || 0;
+    if(!cutoff) return true;
     if(item && typeof item === 'object' && item.timestamp){
-        return item.timestamp > lastCierreTime;
+        return Number(item.timestamp) > cutoff;
     }
-    const dateStr = (item && item.date) ? item.date : item;
-    if(!dateStr) return true;
-    try{
-        const d = new Date(dateStr);
-        if(!isNaN(d.getTime())) return d.getTime() > lastCierreTime;
-    }catch(e){}
     return true;
 }
 
@@ -667,6 +662,7 @@ function cerrarCaja(){
     lastCierreTime = ahora;
     saveAll();
     showCierreHoy();
+    renderAccounting();
     alert('Cierre de caja guardado. Empieza un nuevo período.');
 }
 
