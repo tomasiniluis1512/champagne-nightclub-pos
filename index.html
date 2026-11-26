@@ -80,7 +80,7 @@ th,td{border:1px solid #444;padding:8px}
 <div id="ticketsList"></div>
 </section>
 <section id="contabilidad">
-<h2>Contabilidad</h2>
+<h2>Contabilidad (Período Actual)</h2>
 <button onclick="exportContabilidadExcel()" style="background:#1a7f37">Exportar a Excel</button>
 <div id="accounting"></div>
 </section>
@@ -165,9 +165,24 @@ function showSection(id){
 }
 
 function isAfterLastCierre(dateStr){
-    if(!lastCierreTime) return true;
+    if(!lastCierreTime || !dateStr) return true;
     try{
-        const d = new Date(dateStr);
+        const parts = dateStr.split(/[\s,/]+/);
+        let d;
+        if(parts.length >= 3){
+            const datePart = parts[0].split('/');
+            if(datePart.length === 3){
+                const day = parseInt(datePart[0]);
+                const month = parseInt(datePart[1]) - 1;
+                const year = parseInt(datePart[2]);
+                d = new Date(year, month, day);
+                if(parts.length > 1 && parts[1].includes(':')){
+                    const time = parts[1].split(':');
+                    d.setHours(parseInt(time[0])||0, parseInt(time[1])||0, parseInt(time[2])||0);
+                }
+            }
+        }
+        if(!d || isNaN(d.getTime())) d = new Date(dateStr);
         return d.getTime() > lastCierreTime;
     }catch(e){ return true; }
 }
@@ -479,11 +494,14 @@ function renderAccounting(){
     const by={};
     tickets.forEach(t=>{
         if(t.cancelled) return;
+        if(!isAfterLastCierre(t.date)) return;
         sales+=t.totalProducts||0;
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
-    gastos.forEach(g => totalGastos += g.monto || 0);
+    gastos.forEach(g => {
+        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
+    });
     let html=`<p>Total Ventas: S/ ${sales.toFixed(2)}</p><p>Total Fichas: S/ ${fichas.toFixed(2)}</p><p>Total Gastos: S/ ${totalGastos.toFixed(2)}</p><p>Neto (Ventas - Fichas - Gastos): S/ ${(sales - fichas - totalGastos).toFixed(2)}</p><h3>Por chica</h3><ul>`;
     for(const [n,a] of Object.entries(by)) html+=`<li>${n}: S/ ${a.toFixed(2)}</li>`;
     div.innerHTML=html+'</ul>';
@@ -509,11 +527,14 @@ function exportContabilidadExcel(){
     const by={};
     tickets.forEach(t=>{
         if(t.cancelled) return;
+        if(!isAfterLastCierre(t.date)) return;
         sales+=t.totalProducts||0;
         fichas+=t.totalFicha||0;
         (t.chicas||[]).forEach(ch=>by[ch.name]=(by[ch.name]||0)+ch.fichaShare);
     });
-    gastos.forEach(g => totalGastos += g.monto || 0);
+    gastos.forEach(g => {
+        if(isAfterLastCierre(g.date)) totalGastos += g.monto || 0;
+    });
     const rows=[['Concepto','Monto'],['Ventas',sales.toFixed(2)],['Fichas',fichas.toFixed(2)],['Gastos',totalGastos.toFixed(2)],['Neto',(sales-fichas-totalGastos).toFixed(2)],[''],['Chica','Ficha']];
     for(const [n,a] of Object.entries(by)) rows.push([n, a.toFixed(2)]);
     downloadCSV('contabilidad.csv', rows);
